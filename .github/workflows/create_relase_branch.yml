@@ -54,8 +54,14 @@ jobs:
 
       - name: Validate version is a valid successor
         run: |
-          # Strip the 'v' prefix from the provided version number
-          NEW_VERSION="${{ github.event.inputs.release_version#v }}"
+          # Assign the input release version to a variable
+          INPUT_VERSION="${{ github.event.inputs.release_version }}"
+
+          # Perform parameter expansion to strip the 'v' prefix
+          NEW_VERSION="${INPUT_VERSION#v}"
+
+          # Access the LATEST_VERSION from the environment
+          LATEST_VERSION="${{ env.LATEST_VERSION }}"
 
           # Install semver using npm (pre-installed on ubuntu-latest)
           npm install -g semver
@@ -67,8 +73,6 @@ jobs:
           else
             echo "Version $NEW_VERSION is a valid successor to $LATEST_VERSION."
           fi
-        env:
-          LATEST_VERSION: ${{ env.LATEST_VERSION }}
 
       - name: Check for Existing Release Branches
         run: |
