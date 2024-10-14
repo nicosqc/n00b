@@ -12,9 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Ensure all branches are fetched
+          fetch-tags: true
+          # Checkout the develop branch
+          ref: develop
 
       - name: Set up Git
         run: |
@@ -29,11 +33,12 @@ jobs:
             exit 1
           fi
 
-      - name: Create Release Branch
+      - name: Check for Existing Release Branches
         run: |
-          RELEASE_BRANCH="release-${{ github.event.inputs.release_version }}"
+          # Fetch remote branches
+          git fetch origin
 
-          # Check if any release branch already exists
+          # Check if any remote branch starts with 'release-'
           if git ls-remote --heads origin 'release-*' | grep 'refs/heads/release-'; then
             echo "Error: An existing release branch was found. Only one release branch is allowed at a time."
             echo "Please finish or close the existing release branch before creating a new one."
@@ -42,13 +47,14 @@ jobs:
             echo "No existing release branches found. Proceeding..."
           fi
 
-          # Check out the 'develop' branch
-          git checkout develop
+      - name: Create and Push Release Branch
+        run: |
+          RELEASE_BRANCH="release-${{ github.event.inputs.release_version }}"
 
           # Create the release branch from develop
-          git checkout -b $RELEASE_BRANCH
+          git checkout -b "$RELEASE_BRANCH"
 
           # Push the new release branch to the remote repository
-          git push origin $RELEASE_BRANCH
+          git push origin "$RELEASE_BRANCH"
 
           echo "Release branch '$RELEASE_BRANCH' created from 'develop' and pushed to origin."
