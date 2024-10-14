@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Git
         run: |
@@ -31,18 +33,23 @@ jobs:
         run: |
           RELEASE_BRANCH="release-${{ github.event.inputs.release_version }}"
 
-          # Fetch the latest changes from origin
+          # Fetch all branches from origin
           git fetch origin
 
-          # Check if release branch already exists
-          if git ls-remote --heads origin $RELEASE_BRANCH; then
-            echo "Release branch '$RELEASE_BRANCH' already exists. Exiting."
+          # Ensure the 'develop' branch is available locally
+          git checkout -b develop origin/develop
+
+          # Check if any release branch already exists
+          if git ls-remote --heads origin 'release-*' | grep 'refs/heads/release-'; then
+            echo "Error: An existing release branch was found. Only one release branch is allowed at a time."
+            echo "Please finish or close the existing release branch before creating a new one."
             exit 1
+          else
+            echo "No existing release branches found. Proceeding..."
           fi
 
           # Create the release branch from develop
-          git checkout origin/develop
-          git checkout -b $RELEASE_BRANCH
+          git checkout -b $RELEASE_BRANCH develop
 
           # Push the new release branch to the remote repository
           git push origin $RELEASE_BRANCH
