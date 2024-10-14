@@ -14,8 +14,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Ensure all tags and branches are fetched
+          fetch-depth: 0      # Ensure all history is fetched
           fetch-tags: true
+          fetch-all: true
 
       - name: Set up Git
         run: |
@@ -63,11 +64,8 @@ jobs:
           # Access the LATEST_VERSION from the environment
           LATEST_VERSION="${{ env.LATEST_VERSION }}"
 
-          # Install semver using npm (pre-installed on ubuntu-latest)
-          npm install -g semver
-
-          # Compare the new version with the latest version
-          if ! semver "$NEW_VERSION" -r ">$LATEST_VERSION"; then
+          # Use npx to run semver without installing globally
+          if ! npx semver "$NEW_VERSION" -r ">$LATEST_VERSION"; then
             echo "Error: Provided version ($NEW_VERSION) is not a valid successor to the latest version ($LATEST_VERSION)."
             exit 1
           else
@@ -90,7 +88,7 @@ jobs:
           RELEASE_BRANCH="release-${{ github.event.inputs.release_version }}"
 
           # Create the release branch from develop
-          git checkout -b "$RELEASE_BRANCH" develop
+          git checkout -b "$RELEASE_BRANCH" origin/develop
 
           # Push the new release branch to the remote repository
           git push origin "$RELEASE_BRANCH"
