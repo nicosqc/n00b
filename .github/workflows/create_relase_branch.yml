@@ -33,12 +33,6 @@ jobs:
         run: |
           RELEASE_BRANCH="release-${{ github.event.inputs.release_version }}"
 
-          # Fetch all branches from origin
-          git fetch origin
-
-          # Ensure the 'develop' branch is available locally
-          git checkout -b develop origin/develop
-
           # Check if any release branch already exists
           if git ls-remote --heads origin 'release-*' | grep 'refs/heads/release-'; then
             echo "Error: An existing release branch was found. Only one release branch is allowed at a time."
@@ -48,8 +42,11 @@ jobs:
             echo "No existing release branches found. Proceeding..."
           fi
 
+          # Check out the 'develop' branch
+          git checkout develop
+
           # Create the release branch from develop
-          git checkout -b $RELEASE_BRANCH develop
+          git checkout -b $RELEASE_BRANCH
 
           # Push the new release branch to the remote repository
           git push origin $RELEASE_BRANCH
