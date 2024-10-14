@@ -16,7 +16,9 @@ jobs:
         with:
           fetch-depth: 0      # Ensure all history is fetched
           fetch-tags: true
-          fetch-all: true
+
+      - name: Fetch develop branch  # <-- Add this step here
+        run: git fetch origin develop
 
       - name: Set up Git
         run: |
