@@ -14,9 +14,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Ensure all tags and branches are fetched
           fetch-tags: true
-          ref: develop
 
       - name: Set up Git
         run: |
@@ -31,40 +30,45 @@ jobs:
             exit 1
           fi
 
-      - name: Fetch latest tags from master branch
+      - name: Fetch latest tag reachable from master
+        id: fetch_latest_tag
         run: |
           git fetch origin master --tags
-          LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
-          echo "Latest tag on master: $LATEST_TAG"
-        id: fetch_latest_tag
 
-      - name: Extract the version number from the latest tag
-        run: |
-          # Strip the 'v' prefix from the latest tag
-          LATEST_VERSION=$(echo "${{ steps.fetch_latest_tag.outputs.LATEST_TAG }}" | sed 's/^v//')
+          # Get the latest tag on the master branch
+          LATEST_TAG=$(git tag --merged origin/master --sort=-v:refname --list 'v*' | head -n1)
+
+          # Ensure that a tag was found
+          if [ -z "$LATEST_TAG" ]; then
+            echo "Error: No tags found on master."
+            exit 1
+          fi
+
+          echo "Latest tag on master: $LATEST_TAG"
+
+          # Strip the 'v' prefix from the latest tag to get the version number
+          LATEST_VERSION="${LATEST_TAG#v}"
+
           echo "Latest version: $LATEST_VERSION"
-          echo "::set-output name=LATEST_VERSION::$LATEST_VERSION"
-        id: extract_version
+          echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
       - name: Validate version is a valid successor
         run: |
           # Strip the 'v' prefix from the provided version number
-          NEW_VERSION="${{ github.event.inputs.release_version }}"
-          NEW_VERSION_STRIPPED=$(echo "$NEW_VERSION" | sed 's/^v//')
+          NEW_VERSION="${{ github.event.inputs.release_version#v }}"
 
-          # Ensure semver is installed
-          sudo apt-get install -y npm
+          # Install semver using npm (pre-installed on ubuntu-latest)
           npm install -g semver
 
           # Compare the new version with the latest version
-          if ! npx semver $NEW_VERSION_STRIPPED -r ">$LATEST_VERSION"; then
-            echo "Error: Provided version ($NEW_VERSION_STRIPPED) is not a valid successor to the latest version ($LATEST_VERSION)."
+          if ! semver "$NEW_VERSION" -r ">$LATEST_VERSION"; then
+            echo "Error: Provided version ($NEW_VERSION) is not a valid successor to the latest version ($LATEST_VERSION)."
             exit 1
           else
-            echo "Version $NEW_VERSION_STRIPPED is a valid successor to $LATEST_VERSION."
+            echo "Version $NEW_VERSION is a valid successor to $LATEST_VERSION."
           fi
         env:
-          LATEST_VERSION: ${{ steps.extract_version.outputs.LATEST_VERSION }}
+          LATEST_VERSION: ${{ env.LATEST_VERSION }}
 
       - name: Check for Existing Release Branches
         run: |
@@ -82,7 +86,7 @@ jobs:
           RELEASE_BRANCH="release-${{ github.event.inputs.release_version }}"
 
           # Create the release branch from develop
-          git checkout -b "$RELEASE_BRANCH"
+          git checkout -b "$RELEASE_BRANCH" develop
 
           # Push the new release branch to the remote repository
           git push origin "$RELEASE_BRANCH"
