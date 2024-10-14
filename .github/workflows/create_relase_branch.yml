@@ -40,25 +40,28 @@ jobs:
 
       - name: Extract the version number from the latest tag
         run: |
-          LATEST_VERSION=${{ steps.fetch_latest_tag.outputs.LATEST_TAG#v }}
+          # Strip the 'v' prefix from the latest tag
+          LATEST_VERSION=$(echo "${{ steps.fetch_latest_tag.outputs.LATEST_TAG }}" | sed 's/^v//')
           echo "Latest version: $LATEST_VERSION"
+          echo "::set-output name=LATEST_VERSION::$LATEST_VERSION"
         id: extract_version
 
       - name: Validate version is a valid successor
         run: |
-          # Remove 'v' from the provided version number
-          NEW_VERSION=${{ github.event.inputs.release_version#v }}
+          # Strip the 'v' prefix from the provided version number
+          NEW_VERSION="${{ github.event.inputs.release_version }}"
+          NEW_VERSION_STRIPPED=$(echo "$NEW_VERSION" | sed 's/^v//')
 
           # Ensure semver is installed
           sudo apt-get install -y npm
           npm install -g semver
 
           # Compare the new version with the latest version
-          if ! npx semver $NEW_VERSION -r ">$LATEST_VERSION"; then
-            echo "Error: Provided version ($NEW_VERSION) is not a valid successor to the latest version ($LATEST_VERSION)."
+          if ! npx semver $NEW_VERSION_STRIPPED -r ">$LATEST_VERSION"; then
+            echo "Error: Provided version ($NEW_VERSION_STRIPPED) is not a valid successor to the latest version ($LATEST_VERSION)."
             exit 1
           else
-            echo "Version $NEW_VERSION is a valid successor to $LATEST_VERSION."
+            echo "Version $NEW_VERSION_STRIPPED is a valid successor to $LATEST_VERSION."
           fi
         env:
           LATEST_VERSION: ${{ steps.extract_version.outputs.LATEST_VERSION }}
