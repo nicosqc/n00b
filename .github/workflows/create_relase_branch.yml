@@ -35,7 +35,7 @@ jobs:
           git fetch origin
 
           # Check if release branch already exists
-          if git ls-remote --heads origin $RELEASE_BRANCH; then
+          if [ -n "$(git ls-remote --heads origin $RELEASE_BRANCH)" ]; then
             echo "Release branch '$RELEASE_BRANCH' already exists. Exiting."
             exit 1
           fi
